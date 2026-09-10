@@ -17,19 +17,8 @@ accuracy = zeros(1,2);
 for n = 1:length(counts)
     hidden = counts(n);
 
-    % Select different training examples as fixed RBF centers.
-    % Each next center is farthest from the already selected centers.
-    indices = zeros(1,hidden);
-    indices(1) = 1;
-    nearest = inf(1,size(x,2));
-    for h = 2:hidden
-        for i = 1:size(x,2)
-            distance = sum((x(:,i)-x(:,indices(h-1))).^2);
-            nearest(i) = min(nearest(i),distance);
-        end
-        nearest(indices(1:h-1)) = -inf;
-        [~, indices(h)] = max(nearest);
-    end
+    % Take evenly spaced training examples as fixed centers.
+    indices = round(linspace(1, size(x,2), hidden));
     c = x(:,indices);
 
     % One output per digit; w(k,h) connects hidden h to output k.
