@@ -2,66 +2,60 @@ clear;
 clc;
 close all;
 
-%% Lab4: reuse the original image processing and recognition workflow.
+%% Lab4: one Paint drawing with five rows of digits.
+% Save your drawing as digits.png next to these three MATLAB files:
+%   0123456789
+%   0123456789
+%   0123456789
+%   0123456789
+%   0123456789
+% Draw each row separately: do not copy and paste the same handwriting.
+% Use black strokes on a white background, straight rows, and generous gaps.
+% Save as an RGB/color PNG, not a grayscale or indexed image.
+%
+% Reuse: pozymiai_raidems_atpazinti extracts the original 35 features.
+% The RBF section follows vaizdo_atpazinimas: cell2mat -> newrb -> sim -> max.
+% We do not run vaizdo_atpazinimas directly because it clears the workspace
+% and hardcodes 11 letters, eight rows, and different image filenames.
+% Both supplied original files remain unchanged.
+%
 % Required: Image Processing Toolbox and Deep Learning Toolbox
 % (or older Neural Network Toolbox with newrb and feedforwardnet).
-%
-% Place these RGB PNG images next to this script:
-% train_digits.png: TWO rows, each containing 0123456789.
-% test_digits.png: ONE separately handwritten row containing 0123456789.
-% Use dark ink, white paper, straight rows and generous gaps between digits.
-% The original extractor assumes the same number of symbols in every row.
-% Its 7-by-7 dilation can merge nearby digits; inspect the displayed crops.
-%
-% This script calls the unchanged pozymiai_raidems_atpazinti.m directly.
-% RBF training and recognition follow vaizdo_atpazinimas.m.
-% Unlike its P(:,12:22) check, our test image is not used for training.
-% The MLP additional task follows the RBF comparison below.
 folder = fileparts(mfilename('fullpath'));
 addpath(folder);
-dataFolder = folder;
 
-%% Settings: change row counts here if you add complete rows.
-trainRows = 2;
-testRows = 1;
-trainFile = fullfile(dataFolder, 'train_digits.png');
-testFile = fullfile(dataFolder, 'test_digits.png');
-assert(isfile(trainFile) && isfile(testFile), ...
-    'Place train_digits.png and test_digits.png next to solution.m.');
+%% 1. Read the drawing using the ORIGINAL feature extractor.
+filename = fullfile(folder, 'digits.png');
+rows = 5;
+assert(isfile(filename), 'Save your five-row Paint drawing as digits.png.');
+drawing = imread(filename);
+% The unchanged original function calls rgb2gray, which needs an RGB image.
+assert(ndims(drawing) == 3 && size(drawing,3) == 3, ...
+    'Save digits.png as an RGB/color PNG.');
 
-% The original function calls rgb2gray unconditionally: use RGB PNG files.
-trainImage = imread(trainFile);
-testImage = imread(testFile);
-assert(ndims(trainImage) == 3 && size(trainImage,3) == 3, ...
-    'Save train_digits.png as an RGB image for the original extractor.');
-assert(ndims(testImage) == 3 && size(testImage,3) == 3, ...
-    'Save test_digits.png as an RGB image for the original extractor.');
+pozymiai = pozymiai_raidems_atpazinti(filename, rows);
+P_all = cell2mat(pozymiai); % 35 rows of features, 50 columns of digits.
+assert(isequal(size(P_all), [35 50]), ...
+    'Expected 50 digits: five rows of 0123456789. Check gaps and crops.');
+assert(all(isfinite(P_all(:))), 'Invalid features: check the image crops.');
 
-%% Original calls: image -> cell array of 35-element feature columns.
-pozymiai_tinklo_mokymui = pozymiai_raidems_atpazinti(trainFile, trainRows);
-P = cell2mat(pozymiai_tinklo_mokymui);
-
-% Inspect training crops before the original function reuses its figures.
-disp('Check training crops in figures 5 and 6: each row must be 0123456789.');
-disp('Press any key in MATLAB to continue to the test image.');
+% The original segmentation assumes equally sized rows. Its dilation can
+% merge nearby digits; disconnected strokes may produce extra objects.
+% Incorrect counts may also cause an error inside the original function.
+disp('Check figures 5 and 6: FIVE rows, each ordered 0123456789.');
+disp('Each tile must contain one complete digit. Stop if the crops are wrong.');
+disp('Press any key in MATLAB to continue.');
 pause;
 
-pozymiai_patikrai = pozymiai_raidems_atpazinti(testFile, testRows);
-P2 = cell2mat(pozymiai_patikrai);
-
-%% Targets: one output per digit, repeated for every training row.
-labels = repmat(0:9, 1, trainRows);
-testLabels = repmat(0:9, 1, testRows);
-T = repmat(eye(10), 1, trainRows);
-assert(isequal(size(P), [35 numel(labels)]), ...
-    'Expected 10 training digits per row and 35 features per digit.');
-assert(isequal(size(P2), [35 numel(testLabels)]), ...
-    'Expected 10 test digits per row and 35 features per digit.');
-assert(all(isfinite(P(:))) && all(isfinite(P2(:))), ...
-    'Image features contain invalid values. Check the segmented images.');
-disp('Check test crops in figures 5 and 6: each row must be 0123456789.');
-disp('Press any key in MATLAB to continue to network training.');
-pause;
+%% 2. First four rows train the networks; the fifth row tests them.
+% Columns 1...10 = row 1, columns 11...20 = row 2, and so on.
+P = P_all(:, 1:40);
+P2 = P_all(:, 41:50);
+% eye(10): output 1 means digit 0, output 2 means digit 1, etc.
+T = repmat(eye(10), 1, 4);
+testLabels = 0:9;
+% P2 is never passed to newrb or train. It is used only for prediction.
+% Ten test digits are a small test: one mistake changes accuracy by 10%.
 
 %% Compare 13 and 8 RBF neurons using the same images.
 counts = [13 8];
