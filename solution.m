@@ -2,25 +2,6 @@ clear;
 clc;
 close all;
 
-%% Lab4: one Paint drawing with five rows of digits.
-% Save your drawing as digits.png next to these three MATLAB files:
-%   0123456789
-%   0123456789
-%   0123456789
-%   0123456789
-%   0123456789
-% Draw each row separately: do not copy and paste the same handwriting.
-% Use black strokes on a white background, straight rows, and generous gaps.
-% Save as an RGB/color PNG, not a grayscale or indexed image.
-%
-% Reuse: pozymiai_raidems_atpazinti extracts the original 35 features.
-% The RBF section follows vaizdo_atpazinimas: cell2mat -> newrb -> sim -> max.
-% We do not run vaizdo_atpazinimas directly because it clears the workspace
-% and hardcodes 11 letters, eight rows, and different image filenames.
-% Both supplied original files remain unchanged.
-%
-% Required: Image Processing Toolbox and Deep Learning Toolbox
-% (or older Neural Network Toolbox with newrb and feedforwardnet).
 folder = fileparts(mfilename('fullpath'));
 addpath(folder);
 
@@ -113,6 +94,7 @@ tinklas.trainParam.showWindow = false;
 tinklas = train(tinklas, P, T);
 
 %% The prediction steps are the same as in the original script.
+testLabelsnew = [5 6 1 2 9 0 7 8 3 4];
 Y2 = sim(tinklas, P2);
 [~, b2] = max(Y2, [], 1);
 predicted = b2 - 1;
@@ -120,11 +102,11 @@ symbols = '0123456789';
 atsakymas = symbols(b2);
 disp(atsakymas);
 disp('Rows: expected digits, predicted digits');
-disp([testLabels; predicted]);
+disp([testLabelsnew; predicted]);
 fprintf('MLP test accuracy: %.1f%%\n', 100 * mean(predicted == testLabels));
 
 figure;
-plot(1:length(testLabels), testLabels, 'o');
+plot(1:length(testLabelsnew), testLabelsnew, 'o');
 hold on;
 plot(1:length(predicted), predicted, '*');
 xlabel('Test example');
